@@ -1,0 +1,37 @@
+[
+	{
+		"id": 1,
+		"correo": "ejemplo@example.com",
+		"clave": "micontraseña123",
+		"nombre": "John",
+		"apellido": "Doe"
+	},
+	{
+		"id": 2,
+		"correo": "jane.doe@example.com",
+		"clave": "password123",
+		"nombre": "Jane",
+		"apellido": "Doe"
+	},
+	{
+		"id": 3,
+		"correo": "modificado@modificado.com",
+		"clave": "modificado",
+		"nombre": "modificado",
+		"apellido": "modificado"
+	},
+	{
+		"id": 5,
+		"correo": "alex.rodriguez@example.com",
+		"clave": "securepwd",
+		"nombre": "Alex",
+		"apellido": "Rodríguez"
+	},
+	{
+		"id": 6,
+		"correo": "laura.lopez@example.com",
+		"clave": "password1234",
+		"nombre": "Laura",
+		"apellido": "López"
+	}
+]
