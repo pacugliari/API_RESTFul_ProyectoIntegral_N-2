@@ -1,5 +1,5 @@
 const express = require('express');
-const { connectToCollection, desconnect, generateId } = require('./mongodb.js');
+const { connectToCollection, desconnect, generateCodigo } = require('../connection_db.js');
 
 const server = express();
 
@@ -7,115 +7,110 @@ const server = express();
 server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
 
-//LISTADO DE USUARIOS CON FILTROS DE CORREO,NOMBRE Y APELLIDO
-server.get('/usuarios', async (req, res) => {
-    const { correo, nombre, apellido } = req.query;
-    let usuarios = [];
+//  LISTADO DE USUARIOS CON FILTROS DE CORREO,NOMBRE Y APELLIDO
+server.get('/api/v1/muebles', async (req, res) => {
+    const { categoria, precio_gte, precio_lte } = req.query;
+    let muebles = [];
 
     try {
-        const collection = await connectToCollection('usuarios');
+        const collection = await connectToCollection('muebles');
 
-        //FILTROS
-        if (correo) usuarios = await collection.find({ correo }).toArray();
-        else if (nombre)  usuarios = await collection.find({ nombre }).toArray();
-        else if (apellido)  usuarios = await collection.find({ apellido }).toArray();
-        else usuarios = await collection.find().toArray();
+        //  FILTROS
+        if (categoria) muebles = await collection.find({ categoria }).sort({ nombre: 1 }).toArray();
+        else if (precio_gte) muebles = await collection.find({ precio: { $gte: Number(precio_gte) } }).sort({ precio: 1 }).toArray();
+        else if (precio_lte) muebles = await collection.find({ precio: { $lte: Number(precio_lte) } }).sort({ precio: -1 }).toArray();
+        else muebles = await collection.find().toArray();
 
-        res.status(200).send(JSON.stringify(usuarios, null, '\t'));
+        res.status(200).send({payload: muebles});
     } catch (error) {
-        console.log(error.message);
-        res.status(500).send('Hubo un error en el servidor');
+        res.status(500).send({message: 'Se ha generado un error en el servidor'});
     } finally {
         await desconnect();
     }
 });
 
-//BUSCAR POR ID
-server.get('/usuarios/:id', async (req, res) => {
-    const { id } = req.params;
+//  BUSCAR POR ID
+server.get('/api/v1/muebles/:codigo', async (req, res) => {
+    const { codigo } = req.params;
 
     try {
-        const collection = await connectToCollection('usuarios');
-        const usuario = await collection.findOne({ id: { $eq: Number(id) } });
+        const collection = await connectToCollection('muebles');
+        const mueble = await collection.findOne({ codigo: { $eq: Number(codigo) } });
 
-        if (!usuario) return res.status(400).send('Error. El Id no corresponde a un usuario existente.');
+        if (!mueble) return res.status(400).send({message: 'El código no corresponde a un mueble registrado'});
 
-        res.status(200).send(JSON.stringify(usuario, null, '\t'));
+        res.status(200).send({payload: mueble});
     } catch (error) {
-        console.log(error.message);
-        res.status(500).send('Hubo un error en el servidor');
+        res.status(500).send({message: 'Se ha generado un error en el servidor'});
     } finally {
         await desconnect();
     }
 });
 
-//ALTA
-server.post('/usuarios', async (req, res) => {
-    const { correo, clave, nombre, apellido } = req.body;
+//  ALTA
+server.post('/api/v1/muebles', async (req, res) => {
+    const { nombre, precio, categoria } = req.body;
 
-    if (!correo || !clave || !nombre || !apellido) {
-        return res.status(400).send('Error. Faltan datos de relevancia.');
+    if (!nombre || !precio || !categoria) {
+        return res.status(400).send({message: 'Faltan datos relevantes'});
     }
 
     try {
-        const collection = await connectToCollection('usuarios');
-        const usuario = { id: await generateId(collection),  correo, clave, nombre, apellido  };
+        const collection = await connectToCollection('muebles');
+        const mueble = { codigo: await generateCodigo(collection), nombre, precio: Number(precio), categoria };
 
-        await collection.insertOne(usuario);
+        await collection.insertOne(mueble);
 
-        res.status(200).send(JSON.stringify(usuario, null, '\t'));
+        res.status(201).send({message: 'Registro creado', payload: mueble});
     } catch (error) {
-        console.log(error.message);
-        res.status(500).send('Hubo un error en el servidor');
+        res.status(500).send({message: 'Se ha generado un error en el servidor'});
     } finally {
         await desconnect();
     }
 });
 
-//MODIFICACION
-server.put('/usuarios/:id', async (req, res) => {
-    const { id } = req.params;
-    const { correo, clave, nombre, apellido } = req.body;
+//  MODIFICACION
+server.put('/api/v1/muebles/:codigo', async (req, res) => {
+    const { codigo } = req.params;
+    const { nombre, precio, categoria } = req.body;
 
-    if (!correo || !clave || !nombre || !apellido) {
-        return res.status(400).send('Error. Faltan datos de relevancia.');
+    if (!nombre || !precio || !categoria) {
+        return res.status(400).send({message: 'Faltan datos relevantes'});
     }
 
     try {
-        const collection = await connectToCollection('usuarios');
-        let existeId = await collection.findOne({ id: { $eq: Number(id) } });
-        
-        if(existeId){
-            const usuario = { correo, clave, nombre, apellido };
-            await collection.updateOne({ id: Number(id) }, { $set: usuario});
-            res.status(200).send(JSON.stringify(usuario, null, '\t'));
-        }else
-            res.status(200).send('No existe el id a modificar');
+        const collection = await connectToCollection('muebles');
+        let existeCodigo = await collection.findOne({ codigo: { $eq: Number(codigo) } });
 
+        if (existeCodigo) {
+            const mueble = { codigo: Number(codigo), nombre, precio: Number(precio), categoria};
+            await collection.updateOne({ codigo: Number(codigo) }, { $set: mueble});
+            res.status(200).send({message: 'Registro actualizado', payload: mueble});
+        } else {
+            res.status(400).send({message: 'El código no corresponde a un mueble registrado'});
+        }
     } catch (error) {
-        console.log(error.message);
-        res.status(500).send('Hubo un error en el servidor');
+        res.status(500).send({message: 'Se ha generado un error en el servidor'});
     } finally {
         await desconnect();
     }
 });
 
-//ELIMINAR
-server.delete('/usuarios/:id', async (req, res) => {
-    const { id } = req.params;
+//  ELIMINAR
+server.delete('/api/v1/muebles/:codigo', async (req, res) => {
+    const { codigo } = req.params;
 
     try {
-        const collection = await connectToCollection('usuarios');
-        const usuario = await collection.findOne({ id: { $eq: Number(id) } });
-        
-        if(usuario){
-            const eliminado = await collection.deleteOne({ id: { $eq: Number(id) } });
-            res.status(200).send('Eliminado');
-        }else
-            res.status(200).send('No existe el id a eliminar');
+        const collection = await connectToCollection('muebles');
+        const mueble = await collection.findOne({ codigo: { $eq: Number(codigo) } });
+        if (mueble) {
+            await collection.deleteOne({ codigo: { $eq: Number(codigo) } });
+            res.status(200).send({message: 'Registro eliminado'});
+        } else {
+            res.status(400).send({message: 'El código no corresponde a un mueble registrado'});
+        }
     } catch (error) {
-        console.log(error.message);
-        res.status(500).send('Hubo un error en el servidor');
+        res.status(500).send({message: 'Se ha generado un error en el servidor'});
     } finally {
         await desconnect();
     }
@@ -128,78 +123,5 @@ server.use('*', (req, res) => {
 
 // Método oyente de peteciones
 server.listen(process.env.SERVER_PORT, process.env.SERVER_HOST, () => {
-    console.log(`Ejecutandose en http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}/usuarios`);
+    console.log(`Ejecutandose en http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}/api/v1/muebles`);
 });
-
-
-/*
-SERVIDOR CON BASE DE DATOS USANDO ARCHIVOS
-
-const express = require("express");
-const { getOneById, getAll, create, update, destroy } = require("./database/data.manager.js");
-
-require('dotenv').config();
-
-const server = express();
-
-// Middlewares
-server.use(express.json());
-server.use(express.urlencoded({ extended: true }));
-
-//GET
-// Obtener todos los usuarios: Ruta GET http://127.0.0.1:3000/usuarios
-server.get('/usuarios', (req, res) => {
-    getAll()
-        .then((usuarios) => res.status(200).send(usuarios))
-        .catch((error) => res.status(400).send(error.message));
-});
-
-// Obtener un usuario específico: Ruta GET http://127.0.0.1:3000/usuario/1
-server.get('/usuarios/:id', (req, res) => {
-    const { id } = req.params;
-
-    getOneById(Number(id))
-        .then((usuario) => res.status(200).send(usuario))
-        .catch((error) => res.status(400).send(error.message));
-});
-
-//POST
-// Crear un nuevo usuario: Ruta POST http://127.0.0.1:3000/usuarios
-server.post('/usuarios', (req, res) => {
-    const { correo, clave, nombre, apellido } = req.body;
-
-    create({ correo, clave, nombre, apellido })
-        .then((usuarios) => res.status(201).send(usuarios))
-        .catch((error) => res.status(400).send(error.message));
-});
-
-//PUT
-// Actualizar un usuario específico: Ruta PUT http://127.0.0.1:3000/usuarios/1
-server.put('/usuarios/:id', (req, res) => {
-    const { id } = req.params;
-    const { correo, clave, nombre, apellido  } = req.body;
-
-    update({ id: Number(id), correo, clave, nombre, apellido })
-        .then((usuario) => res.status(200).send(usuario))
-        .catch((error) => res.status(400).send(error.message));
-});
-
-//DELETE
-// Eliminar un usuario específico: Ruta DELETE http://127.0.0.1:3000/usuarios/1
-server.delete('/usuarios/:id', (req, res) => {
-    const { id } = req.params;
-
-    destroy(Number(id))
-        .then((usuario) => res.status(200).send(usuario))
-        .catch((error) => res.status(400).send(error.message));
-});
-
-// Control de rutas inexistentes
-server.use('*', (req, res) => {
-    res.status(404).send(`<h1>Error 404</h1><h3>La URL indicada no existe en este servidor</h3>`);
-});
-
-// Método oyente de peteciones
-server.listen(process.env.SERVER_PORT, process.env.SERVER_HOST, () => {
-    console.log(`Ejecutandose en http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}/usuarios`);
-});*/
