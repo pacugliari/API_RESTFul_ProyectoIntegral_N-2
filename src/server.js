@@ -7,7 +7,7 @@ const server = express();
 server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
 
-//  LISTADO DE USUARIOS CON FILTROS DE CORREO,NOMBRE Y APELLIDO
+//  LISTADO DE MUEBLES CON FILTROS OPCIONALES DE CATEGORIA Y PRECIO
 server.get('/api/v1/muebles', async (req, res) => {
     const { categoria, precio_gte, precio_lte } = req.query;
     let muebles = [];
@@ -21,15 +21,15 @@ server.get('/api/v1/muebles', async (req, res) => {
         else if (precio_lte) muebles = await collection.find({ precio: { $lte: Number(precio_lte) } }).sort({ precio: -1 }).toArray();
         else muebles = await collection.find().toArray();
 
-        res.status(200).send({payload: muebles});
+        res.status(200).send(JSON.stringify({payload: muebles}));
     } catch (error) {
-        res.status(500).send({message: 'Se ha generado un error en el servidor'});
+        res.status(500).send(JSON.stringify({message: 'Se ha generado un error en el servidor'}));
     } finally {
         await desconnect();
     }
 });
 
-//  BUSCAR POR ID
+//  BUSCAR MUEBLE POR CODIGO
 server.get('/api/v1/muebles/:codigo', async (req, res) => {
     const { codigo } = req.params;
 
@@ -37,22 +37,22 @@ server.get('/api/v1/muebles/:codigo', async (req, res) => {
         const collection = await connectToCollection('muebles');
         const mueble = await collection.findOne({ codigo: { $eq: Number(codigo) } });
 
-        if (!mueble) return res.status(400).send({message: 'El código no corresponde a un mueble registrado'});
+        if (!mueble) return res.status(400).send(JSON.stringify({message: 'El código no corresponde a un mueble registrado'}));
 
-        res.status(200).send({payload: mueble});
+        res.status(200).send(JSON.stringify({payload: mueble}));
     } catch (error) {
-        res.status(500).send({message: 'Se ha generado un error en el servidor'});
+        res.status(500).send(JSON.stringify({message: 'Se ha generado un error en el servidor'}));
     } finally {
         await desconnect();
     }
 });
 
-//  ALTA
+//  ALTA MUEBLE
 server.post('/api/v1/muebles', async (req, res) => {
     const { nombre, precio, categoria } = req.body;
 
     if (!nombre || !precio || !categoria) {
-        return res.status(400).send({message: 'Faltan datos relevantes'});
+        return res.status(400).send(JSON.stringify({message: 'Faltan datos relevantes'}));
     }
 
     try {
@@ -61,21 +61,21 @@ server.post('/api/v1/muebles', async (req, res) => {
 
         await collection.insertOne(mueble);
 
-        res.status(201).send({message: 'Registro creado', payload: mueble});
+        res.status(201).send(JSON.stringify({message: 'Registro creado', payload: mueble}));
     } catch (error) {
-        res.status(500).send({message: 'Se ha generado un error en el servidor'});
+        res.status(500).send(JSON.stringify({message: 'Se ha generado un error en el servidor'}));
     } finally {
         await desconnect();
     }
 });
 
-//  MODIFICACION
+//  MODIFICACION MUEBLE
 server.put('/api/v1/muebles/:codigo', async (req, res) => {
     const { codigo } = req.params;
     const { nombre, precio, categoria } = req.body;
 
     if (!nombre || !precio || !categoria) {
-        return res.status(400).send({message: 'Faltan datos relevantes'});
+        return res.status(400).send(JSON.stringify({message: 'Faltan datos relevantes'}));
     }
 
     try {
@@ -85,18 +85,18 @@ server.put('/api/v1/muebles/:codigo', async (req, res) => {
         if (existeCodigo) {
             const mueble = { codigo: Number(codigo), nombre, precio: Number(precio), categoria};
             await collection.updateOne({ codigo: Number(codigo) }, { $set: mueble});
-            res.status(200).send({message: 'Registro actualizado', payload: mueble});
+            res.status(200).send(JSON.stringify({message: 'Registro actualizado', payload: mueble}));
         } else {
-            res.status(400).send({message: 'El código no corresponde a un mueble registrado'});
+            res.status(400).send(JSON.stringify({message: 'El código no corresponde a un mueble registrado'}));
         }
     } catch (error) {
-        res.status(500).send({message: 'Se ha generado un error en el servidor'});
+        res.status(500).send(JSON.stringify({message: 'Se ha generado un error en el servidor'}));
     } finally {
         await desconnect();
     }
 });
 
-//  ELIMINAR
+//  ELIMINAR MUEBLE
 server.delete('/api/v1/muebles/:codigo', async (req, res) => {
     const { codigo } = req.params;
 
@@ -105,12 +105,12 @@ server.delete('/api/v1/muebles/:codigo', async (req, res) => {
         const mueble = await collection.findOne({ codigo: { $eq: Number(codigo) } });
         if (mueble) {
             await collection.deleteOne({ codigo: { $eq: Number(codigo) } });
-            res.status(200).send({message: 'Registro eliminado'});
+            res.status(200).send(JSON.stringify({message: 'Registro eliminado'}));
         } else {
-            res.status(400).send({message: 'El código no corresponde a un mueble registrado'});
+            res.status(400).send(JSON.stringify({message: 'El código no corresponde a un mueble registrado'}));
         }
     } catch (error) {
-        res.status(500).send({message: 'Se ha generado un error en el servidor'});
+        res.status(500).send(JSON.stringify({message: 'Se ha generado un error en el servidor'}));
     } finally {
         await desconnect();
     }
